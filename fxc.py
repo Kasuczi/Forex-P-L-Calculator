@@ -1,4 +1,3 @@
-from forex_python.converter import CurrencyRates
 import pandas as pd
 import colorama
 import smtplib
@@ -7,13 +6,17 @@ from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 import os
 from decimal import Decimal
+import requests
+import json
 
 colorama.init()
 pd.options.display.max_columns = None
 
-cr = CurrencyRates()
-rates = cr.get_rates('USD')
-currencies = list(rates.keys())
+URL = "https://openexchangerates.org/api/latest.json?app_id=0b0987aea751402587085c8d733e16d0"
+response = requests.get(URL)
+data = json.loads(response.text)
+currencies = list(data['rates'].keys())
+currencies = [x for x in currencies if x[0] != 'X']
 
 
 def get_exchange_rate(base_currency, quote_currency):
@@ -26,7 +29,7 @@ def get_exchange_rate(base_currency, quote_currency):
     Returns:
         float: exchange rate
     """
-    exchange_rate = cr.get_rate(base_currency, quote_currency)
+    exchange_rate = data['rates'][quote_currency] / data['rates'][base_currency]
     return exchange_rate
 
 
@@ -131,8 +134,8 @@ def send_mail(output_file_path, PASSWORD):
         PASSWORD (str): Outlook password
     """
     msg = MIMEMultipart()
-    msg['From'] = "from@mail.com"
-    msg['To'] = "to@mail.com"
+    msg['From'] = "mateusz.janikowski@tuatara.pl"
+    msg['To'] = "janikowski.mateusz96@gmail.com"
     msg['Subject'] = "FX game plan for " + pair
 
     with open(output_file_path, 'rb') as f:
@@ -144,7 +147,7 @@ def send_mail(output_file_path, PASSWORD):
 
     server = smtplib.SMTP('smtp.office365.com', 587)
     server.starttls()
-    server.login("from@mail.com", PASSWORD)
+    server.login("mateusz.janikowski@tuatara.pl", PASSWORD)
     server.send_message(msg)
     server.quit()
 
@@ -163,6 +166,7 @@ if __name__ == "__main__":
         """ Main """
         pair = input("Pair: ").upper()
         contract_size = int(input("Contract Size: "))
+        levarage = int(input("Levarage: "))
         swap_rate = Decimal(input("Provide swap rate: "))
         stop_price = Decimal(input("Stop price: "))
         swap_value_daily = swap(pair, swap_rate)
@@ -180,7 +184,7 @@ if __name__ == "__main__":
                 averaging_price = Decimal(input("Add averaging price: "))
                 profit_loose_lst.append(
                     round(calculate_profit_loss(pair, averaging_price, stop_price, contract_size * i), 2))
-                margin_lst.append(round(calculate_margin_required(i, contract_size, averaging_price, 500), 2))
+                margin_lst.append(round(calculate_margin_required(i, contract_size, averaging_price, levarage), 2))
                 lot_size_lst.append(i)
                 prices_lst.append(averaging_price)
                 is_it_all = input("Do You want to add another Y/N?: ").upper()
@@ -192,7 +196,7 @@ if __name__ == "__main__":
                 lot_size = Decimal(input("Add lot size: "))
                 profit_loose_lst.append(
                     round(calculate_profit_loss(pair, averaging_price, stop_price, contract_size * lot_size), 2))
-                margin_lst.append(round(calculate_margin_required(lot_size, contract_size, averaging_price, 500), 2))
+                margin_lst.append(round(calculate_margin_required(lot_size, contract_size, averaging_price, levarage), 2))
                 lot_size_lst.append(lot_size)
                 prices_lst.append(averaging_price)
                 is_it_all = input("Do You want to add another Y/N?: ").upper()
@@ -234,17 +238,20 @@ if __name__ == "__main__":
         print(data)
         print('')
         print(f'Summary statistics of trade on {pair}: ')
-        data = data[['lot_size', 'margin_value', 'profit_loose_value', 'price']]
+        data = data[['lot_size', 'margin_value', 'profit_loose_value', 'price']].astype(float)
         print(data.describe().round(2))
         print('')
         print(f'The average price is: {colorama.Fore.RED}{round(weighted_average_price, 5)}{colorama.Fore.RESET}')
-        print(f'The total margin required for this trade will be about: {colorama.Fore.RED}{round(sum(result_lst), 2)}{colorama.Fore.RESET} USD')
+        print(
+            f'The total margin required for this trade will be about: {colorama.Fore.RED}{round(sum(result_lst), 2)}{colorama.Fore.RESET} USD')
         print(f'which includes {colorama.Fore.RED}{round(sum(margin_lst), 2)}{colorama.Fore.RESET} USD of margin')
         print(f'and {colorama.Fore.RED}{round(sum(profit_loose_lst), 2)}{colorama.Fore.RESET} USD of profit/loose')
         print(f'The total lot size is {colorama.Fore.RED}{round(sum(lot_size_lst), 2)}{colorama.Fore.RESET}')
         print(f'The total pips distance is {colorama.Fore.RED}{round(total_pips, 2)}{colorama.Fore.RESET} pips')
-        print(f'The ROE is: {colorama.Fore.RED}{round(sum(profit_loose_lst) / sum(margin_lst) * 100)}{colorama.Fore.RESET} %')
-        print(f'The daily swap value for sum of lot size is: {colorama.Fore.RED}{round(swap_value_daily * sum(lot_size_lst), 2)}{colorama.Fore.RESET} USD')
+        print(
+            f'The ROE is: {colorama.Fore.RED}{round(sum(profit_loose_lst) / sum(margin_lst) * 100)}{colorama.Fore.RESET} %')
+        print(
+            f'The daily swap value for sum of lot size is: {colorama.Fore.RED}{round(swap_value_daily * sum(lot_size_lst), 2)}{colorama.Fore.RESET} USD')
         print('------------------------------------------------------------------------')
 
         is_email = input("Do You wan to send statistics by e mail? Y/N: ").upper()
