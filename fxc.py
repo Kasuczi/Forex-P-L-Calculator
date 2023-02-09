@@ -134,8 +134,8 @@ def send_mail(output_file_path, PASSWORD):
         PASSWORD (str): Outlook password
     """
     msg = MIMEMultipart()
-    msg['From'] = "mateusz.janikowski@tuatara.pl"
-    msg['To'] = "janikowski.mateusz96@gmail.com"
+    msg['From'] = "your@mail.com"
+    msg['To'] = "to@mail.com"
     msg['Subject'] = "FX game plan for " + pair
 
     with open(output_file_path, 'rb') as f:
@@ -147,7 +147,7 @@ def send_mail(output_file_path, PASSWORD):
 
     server = smtplib.SMTP('smtp.office365.com', 587)
     server.starttls()
-    server.login("mateusz.janikowski@tuatara.pl", PASSWORD)
+    server.login("your@mail.com", PASSWORD)
     server.send_message(msg)
     server.quit()
 
