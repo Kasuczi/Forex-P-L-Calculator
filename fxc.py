@@ -12,7 +12,7 @@ import json
 colorama.init()
 pd.options.display.max_columns = None
 
-URL = "https://openexchangerates.org/api/latest.json?app_id=0b0987aea751402587085c8d733e16d0"
+URL = "https://openexchangerates.org/api/latest.json?app_id=YOUR_API_KEY"
 response = requests.get(URL)
 data = json.loads(response.text)
 currencies = list(data['rates'].keys())
@@ -121,7 +121,9 @@ def swap(pair, swap_rate, days=1, ticket_size=1, lot_size=1):
         else:
             exchange_rate = get_exchange_rate(base_currency, quote_currency)
             result_in_quote_currency = Decimal(result) * Decimal(exchange_rate)
-            return result_in_quote_currency
+            exchange_rate_account_currency = get_exchange_rate(quote_currency, 'USD')
+            result_in_account_currency = Decimal(result_in_quote_currency) * Decimal(exchange_rate_account_currency)
+            return result_in_account_currency
     else:
         return result
 
@@ -134,8 +136,8 @@ def send_mail(output_file_path, PASSWORD):
         PASSWORD (str): Outlook password
     """
     msg = MIMEMultipart()
-    msg['From'] = "your@mail.com"
-    msg['To'] = "to@mail.com"
+    msg['From'] = "your@mail
+    msg['To'] = "to@mail"
     msg['Subject'] = "FX game plan for " + pair
 
     with open(output_file_path, 'rb') as f:
@@ -147,7 +149,7 @@ def send_mail(output_file_path, PASSWORD):
 
     server = smtplib.SMTP('smtp.office365.com', 587)
     server.starttls()
-    server.login("your@mail.com", PASSWORD)
+    server.login("your@mail", PASSWORD)
     server.send_message(msg)
     server.quit()
 
